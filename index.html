@@ -1,0 +1,613 @@
+        function exportData() {
+            const csvContent = [
+                ['Data', 'Horário', 'Conteúdo', 'Entidade', 'Supervisor', 'Status', 'Observações'],
+                ...posts.map(post => [
+                    new Date(post.date + 'T00:00:00').toLocaleDateString('pt-BR'),
+                    post.time,
+                    post.content,
+                    post.entity,
+                    post.supervisor,
+                    post.status.toUpperCase(),
+                    post.notes || ''
+                ])
+            ].map(row => row.join(',')).join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'cronograma_posts_evento.csv';
+            link.click();
+        }<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cronograma de Postagens Instagram</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #833ab4, #fd1d1d);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(131, 58, 180, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        
+        .status-filter {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .status-filter select {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            max-height: 70vh;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 15px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-cell {
+            position: relative;
+        }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-planejado {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-agendado {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-publicado {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-cancelado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .editable {
+            background: transparent;
+            border: none;
+            width: 100%;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .editable:focus {
+            outline: none;
+            background: #fff;
+            box-shadow: 0 0 0 2px rgba(131, 58, 180, 0.2);
+        }
+        
+        .time-input {
+            width: 70px;
+        }
+        
+        .content-input {
+            min-width: 200px;
+        }
+        
+        .person-input {
+            min-width: 120px;
+        }
+        
+        .date-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .weekend {
+            background: #f8f9fa;
+        }
+        
+        .stats {
+            padding: 20px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #833ab4;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Cronograma de Postagens - Evento</h1>
+            <p>Instagram • 23 Jul - 15 Ago 2025</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="addPost()">➕ Adicionar Post</button>
+            <button class="btn btn-secondary" onclick="exportData()">📊 Exportar CSV</button>
+            <button class="btn btn-secondary" onclick="exportExcel()">📋 Baixar Planilha</button>
+            <button class="btn btn-secondary" onclick="clearCompleted()">🗑️ Limpar Publicados</button>
+            
+            <div class="status-filter">
+                <label>Filtrar por status:</label>
+                <select id="statusFilter" onchange="filterByStatus()">
+                    <option value="">Todos</option>
+                    <option value="planejado">Planejado</option>
+                    <option value="agendado">Agendado</option>
+                    <option value="publicado">Publicado</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats">
+            <div class="stat-item">
+                <div class="stat-number" id="totalPosts">0</div>
+                <div class="stat-label">Total de Posts</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="publishedPosts">0</div>
+                <div class="stat-label">Publicados</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="scheduledPosts">0</div>
+                <div class="stat-label">Agendados</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="pendingPosts">0</div>
+                <div class="stat-label">Pendentes</div>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table id="cronogramaTable">
+                <thead>
+                    <tr>
+                        <th>📅 Data</th>
+                        <th>🕒 Horário</th>
+                        <th>📝 Conteúdo/Tema</th>
+                        <th>🏢 Entidade Responsável</th>
+                        <th>👨‍💼 Supervisor</th>
+                        <th>📊 Status</th>
+                        <th>🗒️ Observações</th>
+                        <th>⚙️ Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="postsTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let posts = [];
+        let postIdCounter = 1;
+
+        // Dados iniciais do cronograma
+        const initialPosts = [
+            { date: '2025-07-23', time: '18:00', content: '📅 Save the Date - O evento está chegando!', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Post de lançamento - criar expectativa' },
+            { date: '2025-07-25', time: '20:00', content: '🎫 Ingressos e Busão - Já disponíveis!', entity: 'Vendas', supervisor: 'Coordenador', status: 'planejado', notes: 'Link para vendas + info transporte' },
+            { date: '2025-07-28', time: '19:00', content: '📍 Local - Conheça onde vai rolar a festa', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Fotos do local + localização' },
+            { date: '2025-07-30', time: '18:30', content: '🍻 Início vendas na Cheers - Parceria oficial', entity: 'Vendas', supervisor: 'Coordenador', status: 'planejado', notes: 'Destaque para ponto de venda físico' },
+            { date: '2025-08-01', time: '21:00', content: '🎊 Promoters - Conhece nossa equipe', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Apresentar equipe de promoters' },
+            { date: '2025-08-04', time: '19:30', content: '🍸 Open Bar - Bebidas liberadas a noite toda!', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Destacar variedade de bebidas' },
+            { date: '2025-08-06', time: '20:30', content: '🥃 Shots - Os melhores da cidade', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Vídeo dos shots sendo preparados' },
+            { date: '2025-08-08', time: '18:00', content: '🎵 Line Up - Artistas confirmados', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Carrossel com todos os DJs/artistas' },
+            { date: '2025-08-11', time: '19:00', content: '🍕 Comida no rolê - Food trucks confirmados', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Mostrar opções gastronômicas' },
+            { date: '2025-08-12', time: '20:00', content: '🎪 Atrações - Surpresas da noite', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Revelar atrações especiais' },
+            { date: '2025-08-13', time: '17:00', content: '👗 Look da festa - Dress code e inspirações', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Stories com looks inspiradores' },
+            { date: '2025-08-14', time: '16:00', content: '📸 Fotógrafos - Registros profissionais garantidos', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Apresentar equipe de fotografia' },
+            { date: '2025-08-15', time: '12:00', content: '⚠️ Avisos Finais - Últimas informações importantes', entity: 'Marketing', supervisor: 'Coordenador', status: 'planejado', notes: 'Compilado final: horários, local, contatos' }
+        ];
+
+        function initializeApp() {
+            initialPosts.forEach((post, index) => {
+                posts.push({
+                    id: postIdCounter++,
+                    ...post
+                });
+            });
+            renderTable();
+            updateStats();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('postsTableBody');
+            tbody.innerHTML = '';
+
+            // Agrupar por data
+            const postsByDate = {};
+            posts.forEach(post => {
+                if (!postsByDate[post.date]) {
+                    postsByDate[post.date] = [];
+                }
+                postsByDate[post.date].push(post);
+            });
+
+            // Ordenar datas
+            const sortedDates = Object.keys(postsByDate).sort();
+
+            sortedDates.forEach(date => {
+                // Cabeçalho da data
+                const dateRow = document.createElement('tr');
+                const dateFormatted = new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                dateRow.innerHTML = `<td colspan="8" class="date-header">${dateFormatted}</td>`;
+                tbody.appendChild(dateRow);
+
+                // Posts da data
+                postsByDate[date]
+                    .sort((a, b) => a.time.localeCompare(b.time))
+                    .forEach(post => {
+                        const row = createPostRow(post);
+                        tbody.appendChild(row);
+                    });
+            });
+        }
+
+        function createPostRow(post) {
+            const row = document.createElement('tr');
+            const isWeekend = new Date(post.date + 'T00:00:00').getDay() === 0 || new Date(post.date + 'T00:00:00').getDay() === 6;
+            if (isWeekend) row.classList.add('weekend');
+
+            row.innerHTML = `
+                <td>
+                    <input type="date" class="editable" value="${post.date}" 
+                           onchange="updatePost(${post.id}, 'date', this.value)" style="width: 140px;">
+                </td>
+                <td>
+                    <input type="time" class="editable time-input" value="${post.time}" 
+                           onchange="updatePost(${post.id}, 'time', this.value)">
+                </td>
+                <td>
+                    <input type="text" class="editable content-input" value="${post.content.replace(/"/g, '&quot;')}" 
+                           onchange="updatePost(${post.id}, 'content', this.value)" placeholder="Tema do post...">
+                </td>
+                <td>
+                    <input type="text" class="editable person-input" value="${post.entity}" 
+                           onchange="updatePost(${post.id}, 'entity', this.value)" placeholder="Responsável...">
+                </td>
+                <td>
+                    <input type="text" class="editable person-input" value="${post.supervisor}" 
+                           onchange="updatePost(${post.id}, 'supervisor', this.value)" placeholder="Supervisor...">
+                </td>
+                <td class="status-cell">
+                    <select class="editable" onchange="updatePost(${post.id}, 'status', this.value)">
+                        <option value="planejado" ${post.status === 'planejado' ? 'selected' : ''}>Planejado</option>
+                        <option value="agendado" ${post.status === 'agendado' ? 'selected' : ''}>Agendado</option>
+                        <option value="publicado" ${post.status === 'publicado' ? 'selected' : ''}>Publicado</option>
+                        <option value="cancelado" ${post.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+                    </select>
+                    <div class="status-badge status-${post.status}">${post.status}</div>
+                </td>
+                <td>
+                    <input type="text" class="editable" value="${(post.notes || '').replace(/"/g, '&quot;')}" 
+                           onchange="updatePost(${post.id}, 'notes', this.value)" placeholder="Observações...">
+                </td>
+                <td>
+                    <button type="button" class="btn" style="font-size: 12px; padding: 8px 12px;" 
+                            onclick="deletePost(${post.id})" title="Excluir post">🗑️</button>
+                </td>
+            `;
+
+            return row;
+        }
+
+        function addPost() {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            const newPost = {
+                id: postIdCounter++,
+                date: todayString,
+                time: '09:00',
+                content: 'Novo post',
+                entity: 'Marketing',
+                supervisor: 'Coordenador',
+                status: 'planejado',
+                notes: ''
+            };
+            
+            posts.push(newPost);
+            renderTable();
+            updateStats();
+        }
+
+        function updatePost(id, field, value) {
+            const post = posts.find(p => p.id === id);
+            if (post) {
+                post[field] = value;
+                if (field === 'status' || field === 'date') {
+                    renderTable(); // Re-render para atualizar o badge ou reagrupar por data
+                } else {
+                    updateStats();
+                }
+            }
+        }
+
+        function deletePost(id) {
+            if (confirm('Tem certeza que deseja excluir este post?')) {
+                posts = posts.filter(p => p.id !== id);
+                renderTable();
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            const total = posts.length;
+            const published = posts.filter(p => p.status === 'publicado').length;
+            const scheduled = posts.filter(p => p.status === 'agendado').length;
+            const pending = posts.filter(p => p.status === 'planejado').length;
+
+            document.getElementById('totalPosts').textContent = total;
+            document.getElementById('publishedPosts').textContent = published;
+            document.getElementById('scheduledPosts').textContent = scheduled;
+            document.getElementById('pendingPosts').textContent = pending;
+        }
+
+        function filterByStatus() {
+            const filter = document.getElementById('statusFilter').value;
+            const tbody = document.getElementById('postsTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                // Sempre mostrar cabeçalhos de data
+                if (row.querySelector('td[colspan]')) {
+                    row.style.display = '';
+                    return;
+                }
+                
+                if (!filter) {
+                    row.style.display = '';
+                } else {
+                    const statusSelect = row.querySelector('select.editable');
+                    if (statusSelect && statusSelect.value === filter) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function exportExcel() {
+            // Criar dados em formato HTML para Excel
+            let htmlTable = `
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Horário</th>
+                            <th>Conteúdo/Tema</th>
+                            <th>Entidade Responsável</th>
+                            <th>Supervisor</th>
+                            <th>Status</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            // Ordenar posts por data e horário
+            const sortedPosts = [...posts].sort((a, b) => {
+                if (a.date === b.date) {
+                    return a.time.localeCompare(b.time);
+                }
+                return a.date.localeCompare(b.date);
+            });
+            
+            sortedPosts.forEach(post => {
+                const dateFormatted = new Date(post.date + 'T00:00:00').toLocaleDateString('pt-BR');
+                htmlTable += `
+                    <tr>
+                        <td>${dateFormatted}</td>
+                        <td>${post.time}</td>
+                        <td>${post.content}</td>
+                        <td>${post.entity}</td>
+                        <td>${post.supervisor}</td>
+                        <td>${post.status.toUpperCase()}</td>
+                        <td>${post.notes || ''}</td>
+                    </tr>
+                `;
+            });
+            
+            htmlTable += `
+                    </tbody>
+                </table>
+            `;
+            
+            // Criar arquivo Excel
+            const excelContent = `
+                <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Cronograma de Postagens - Evento</title>
+                    </head>
+                    <body>
+                        <h1>Cronograma de Postagens - Evento Instagram</h1>
+                        <p>Período: 23 Jul - 15 Ago 2025</p>
+                        <br>
+                        ${htmlTable}
+                    </body>
+                </html>
+            `;
+            
+            const blob = new Blob([excelContent], { 
+                type: 'application/vnd.ms-excel;charset=utf-8;' 
+            });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Cronograma_Postagens_Evento.xls';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Mostrar mensagem de sucesso
+            alert('Planilha baixada com sucesso! ✅\n\nAbra o arquivo no Excel, Google Sheets ou LibreOffice.');
+        }
+
+        function clearCompleted() {
+            const publishedCount = posts.filter(p => p.status === 'publicado').length;
+            if (publishedCount === 0) {
+                alert('Não há posts publicados para remover.');
+                return;
+            }
+            
+            if (confirm(`Deseja remover ${publishedCount} post(s) já publicado(s)?`)) {
+                posts = posts.filter(p => p.status !== 'publicado');
+                renderTable();
+                updateStats();
+                alert(`${publishedCount} post(s) removido(s) com sucesso!`);
+            }
+        }
+
+        // Inicializar app
+        initializeApp();
+    </script>
+</body>
+</html>
